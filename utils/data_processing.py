@@ -32,5 +32,3 @@ def generate_time_window_labels(maintenance_data_df, num_time_windows):
     time_window_labels = [torch.tensor(label.values, dtype=torch.float32) for label in time_window_labels]
     
     return torch.stack(time_window_labels, dim=1)  # 堆叠成 [batch_size, num_time_windows, num_labels]
-
-

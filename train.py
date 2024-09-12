@@ -26,24 +26,30 @@ hidden_dim = 64
 model = GDN(input_dim, hidden_dim, output_dim, num_time_windows)
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
+# 更新特征的均值和方差
+model.update_statistics(device_data)
+
 # 训练模型
 epochs = 50
 for epoch in range(epochs):
     model.train()
     optimizer.zero_grad()
-    # 模型输出为多个时间窗口的预测
-    predictions = model(device_data)
+    # 模型输出为多个时间窗口的预测和异常得分
+    predictions, anomaly_scores = model(device_data)
     
     # 计算每个时间窗口的损失并累加
     total_loss = 0
     for i in range(num_time_windows):
-        loss = torch.nn.functional.mse_loss(predictions[i], maintenance_labels[:, i, :])
+        loss = torch.nn.functional.mse_loss(predictions, maintenance_labels[:, i, :])
         total_loss += loss
     
     total_loss.backward()
     optimizer.step()
 
     print(f'Epoch {epoch+1}/{epochs}, Loss: {total_loss.item():.4f}')
+    # 打印每个维度的平均异常得分
+    print(f'Anomaly scores for each dimension: {anomaly_scores.mean(dim=0).detach().numpy()}')
 
+# 保存模型
 save_path = 'models/gdn_model.pth'
-torch.save(model.state_dict(), save_path)  # 将模型保存在指定目录
+torch.save(model.state_dict(), save_path)
