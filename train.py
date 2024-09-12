@@ -1,5 +1,6 @@
 import torch
 import torch.optim as optim
+import os
 from models.gdn import GDN
 from utils.data_processing import load_device_data, load_maintenance_data, generate_time_window_labels
 
@@ -50,6 +51,11 @@ for epoch in range(epochs):
     # 打印每个维度的平均异常得分
     print(f'Anomaly scores for each dimension: {anomaly_scores.mean(dim=0).detach().numpy()}')
 
-# 保存模型
+# 检查是否存在同名模型文件，如果存在则删除
 save_path = 'models/gdn_model.pth'
+if os.path.exists(save_path):
+    os.remove(save_path)
+
+# 保存模型
 torch.save(model.state_dict(), save_path)
+print(f'模型已保存到 {save_path}')
