@@ -61,14 +61,14 @@ for i, time_window in enumerate(time_window_descriptions):  # 遍历每个时间
         top_anomaly_str = ', '.join(top_anomaly_features)
 
         # 将每个故障概率转换为百分数并保留3位小数
-        prediction_row = [time_window, timestamp] + [f"{x * 100:.3f}%" for x in row.tolist()] + [top_anomaly_str]
+        prediction_row = [timestamp, time_window] + [f"{x * 100:.3f}%" for x in row.tolist()] + [top_anomaly_str]
         predictions_rows.append(prediction_row)
 
 # 更新故障列名，添加“概率”后缀
 fault_types_with_suffix = [f"{fault}概率" for fault in fault_types]
 
-# 将预测结果保存为 DataFrame
-predictions_df = pd.DataFrame(predictions_rows, columns=['Time Window', 'Timestamp'] + fault_types_with_suffix + ['故障发生根因'])
+# 将预测结果保存为 DataFrame，时间戳列作为第一列，时间窗口列名为“未来时间窗口”
+predictions_df = pd.DataFrame(predictions_rows, columns=['时间', '未来时间窗口'] + fault_types_with_suffix + ['故障发生根因'])
 
 # 保存为 Excel 文件并调整列宽
 with pd.ExcelWriter(predictions_file, engine='openpyxl') as writer:
@@ -87,11 +87,11 @@ anomaly_score_rows = []
 for idx in range(device_data.shape[0]):
     timestamp = timestamps.iloc[idx]  # 根据索引获取时间戳
     for i, time_window in enumerate(time_window_descriptions):  # 遍历每个时间窗口
-        anomaly_score_row = [timestamp] + anomaly_scores[i][idx].tolist()  # 当前设备的异常得分
+        anomaly_score_row = [timestamp, time_window] + anomaly_scores[i][idx].tolist()  # 当前设备的异常得分，并添加时间窗口
         anomaly_score_rows.append(anomaly_score_row)
 
-# 生成异常得分的 DataFrame，移除 '异常' 列
-anomaly_score_columns = ['Timestamp'] + device_data_df.columns[1:-1].tolist()  # 去掉 '异常' 列
+# 生成异常得分的 DataFrame，移除 '异常' 列，时间戳列作为第一列，时间窗口列名为“未来时间窗口”
+anomaly_score_columns = ['时间', '未来时间窗口'] + device_data_df.columns[1:-1].tolist()  # 去掉 '异常' 列
 
 # 创建异常得分 DataFrame
 anomaly_scores_df = pd.DataFrame(anomaly_score_rows, columns=anomaly_score_columns)
