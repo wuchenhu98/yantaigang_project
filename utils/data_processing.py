@@ -16,7 +16,7 @@ def load_device_data(file_path):
 
 def load_maintenance_data(file_path):
     maintenance_data = pd.read_csv(file_path)
-    # 转换维修日志数据为one-hot编码 (假设你需要这样的处理)
+    # 转换维修日志数据为one-hot编码
     maintenance_data_onehot = pd.get_dummies(maintenance_data["repair_type"])
     return maintenance_data_onehot, maintenance_data_onehot.columns.tolist()  # 返回 DataFrame
 

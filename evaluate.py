@@ -94,7 +94,8 @@ for idx in range(device_data.shape[0]):
         anomaly_score_rows.append(anomaly_score_row)
 
 # 生成异常得分的 DataFrame，移除 '异常' 列，时间戳列作为第一列，时间窗口列名为“未来时间窗口”
-anomaly_score_columns = ['时间', '未来时间窗口'] + device_data_df.columns[1:-1].tolist()  # 去掉 '异常' 列
+anomaly_score_columns = ['时间', '未来时间窗口'] + device_data_df.columns[1:].tolist()  # 确保列数和数据匹配
+
 
 # 创建异常得分 DataFrame
 anomaly_scores_df = pd.DataFrame(anomaly_score_rows, columns=anomaly_score_columns)

@@ -21,13 +21,12 @@ device_data = pd.DataFrame({
     "SCR下游NOX传感器输出值": np.random.uniform(5, 50, size=num_records),
     "SCR入口温度": np.random.uniform(100, 300, size=num_records),
     "SCR出口温度": np.random.uniform(80, 250, size=num_records),
-    "水温": np.random.uniform(60, 90, size=num_records),
-    "异常": np.zeros(num_records)  # Initially no anomalies
+    "水温": np.random.uniform(60, 90, size=num_records)
 })
 
-# Introduce anomalies in the dataset (10% of data points)
-anomaly_indices = np.random.choice(num_records, size=int(0.1 * num_records), replace=False)
-device_data.loc[anomaly_indices, "异常"] = 1  # Mark anomalies
+# Introduce anomalies in the dataset (10% of data points) - if needed
+# Note: If you want to mark anomalies in the actual data for analysis or visualization,
+# you can still generate a separate list of anomaly indices without adding a column.
 
 # Create synthetic repair data (maintenance logs)
 repair_data = pd.DataFrame({
