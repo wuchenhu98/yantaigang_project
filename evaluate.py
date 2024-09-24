@@ -22,8 +22,9 @@ anomaly_scores_file = os.path.join(anomaly_scores_dir, f'anomaly_scores_{timesta
 overall_prediction_file = os.path.join(overall_prediction_dir, f'overall_prediction_{timestamp_str}.xlsx')
 
 # 加载设备运行数据，包括时间戳
+num_time_windows = 6  # 预测未来1-6周
 device_data_df = pd.read_csv('data/device_operation_data.csv')
-device_data = load_device_data('data/device_operation_data.csv')
+device_data = load_device_data('data/device_operation_data.csv', num_time_windows)
 device_data = torch.as_tensor(device_data, dtype=torch.float32)
 
 # 从维修日志中提取故障种类和维修数据
@@ -33,7 +34,6 @@ maintenance_data, fault_types = load_maintenance_data('data/maintenance_logs.csv
 input_dim = device_data.shape[1]
 hidden_dim = 64
 output_dim = len(fault_types)  # 确保输出维度与训练时一致
-num_time_windows = 6  # 预测未来1-6周
 
 # 加载训练好的模型
 model = GDN(input_dim, hidden_dim, output_dim, num_time_windows)
@@ -93,9 +93,16 @@ for idx in range(device_data.shape[0]):
         anomaly_score_row = [timestamp, time_window] + anomaly_scores[i][idx].tolist()  # 当前设备的异常得分，并添加时间窗口
         anomaly_score_rows.append(anomaly_score_row)
 
-# 生成异常得分的 DataFrame，移除 '异常' 列，时间戳列作为第一列，时间窗口列名为“未来时间窗口”
-anomaly_score_columns = ['时间', '未来时间窗口'] + device_data_df.columns[1:].tolist()  # 确保列数和数据匹配
-
+# 更新列名称列表以匹配实际数据，确保与生成的数据匹配
+anomaly_score_columns = [
+    '时间', '未来时间窗口', '时间步数', '时间窗口长度', 
+    '车速', '发动机转速', '油耗', '故障码数量', 
+    '发动机扭矩', '摩擦扭矩', '燃料流量', '空气进气量', 
+    'SCR上游NOX传感器输出值', 'SCR下游NOX传感器输出值', 
+    'SCR入口温度', 'SCR出口温度', '水温', 
+    '异常得分1', '异常得分2', '异常得分3', 
+    '异常得分4', '异常得分5'  # 添加额外的异常得分列名称，确保与实际数据匹配
+]
 
 # 创建异常得分 DataFrame
 anomaly_scores_df = pd.DataFrame(anomaly_score_rows, columns=anomaly_score_columns)
@@ -111,6 +118,7 @@ with pd.ExcelWriter(anomaly_scores_file, engine='openpyxl') as writer:
         worksheet.column_dimensions[column_cells[0].column_letter].width = max_length + 2
 
 print(f'异常得分已保存到 {anomaly_scores_file}')
+
 
 # 计算每个时间窗口的整体故障概率预测，并按故障概率排序
 overall_predictions = []

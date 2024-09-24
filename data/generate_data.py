@@ -9,6 +9,7 @@ timestamp_start = pd.Timestamp('2024-08-01 00:00:00')
 # Create synthetic device operation data with the required dimensions
 device_data = pd.DataFrame({
     "timestamp": [timestamp_start + timedelta(hours=i) for i in range(num_records)],
+    "时间步数": np.arange(num_records),  # 增加时间步数特征
     "车速": np.random.randint(0, 120, size=num_records),
     "发动机转速": np.random.randint(500, 3000, size=num_records),
     "油耗": np.random.uniform(5, 20, size=num_records),
@@ -24,13 +25,14 @@ device_data = pd.DataFrame({
     "水温": np.random.uniform(60, 90, size=num_records)
 })
 
-# Introduce anomalies in the dataset (10% of data points) - if needed
-# Note: If you want to mark anomalies in the actual data for analysis or visualization,
-# you can still generate a separate list of anomaly indices without adding a column.
+# Introduce additional time window feature
+# Add explicit time window length (in weeks) for each record
+time_windows = [1, 2, 3, 4, 5, 6]  # Example time windows: 1 week to 6 weeks
+device_data["时间窗口长度"] = np.random.choice(time_windows, size=num_records)  # 随机分配时间窗口长度
 
 # Create synthetic repair data (maintenance logs)
 repair_data = pd.DataFrame({
-    "timestamp": [timestamp_start + timedelta(hours=i*10) for i in range(10)],  # Repairs every 10 hours
+    "timestamp": [timestamp_start + timedelta(hours=i * 10) for i in range(10)],  # Repairs every 10 hours
     "repair_type": np.random.choice(
         ["发动机维修", "排气系统维修", "故障码异常", "压力传感器异常", "水温异常", "变速箱异常"],
         size=10
