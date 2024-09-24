@@ -137,12 +137,15 @@ overall_predictions = []
 overall_causes = []  # 用于存储每个时间窗口的主要故障原因
 previous_overall_prediction = torch.zeros_like(predictions[0][0])  # 初始化为0向量
 
+# 在这里初始化 overall_prediction_rows
+overall_prediction_rows = []  # 初始化为一个空列表
+
 for i in range(num_time_windows):
     overall_prediction = torch.mean(predictions[i], dim=0)  # 计算该时间窗口的平均概率
     
     # 添加随机增量以确保概率不同
     random_increment = torch.tensor(np.random.uniform(0.01, 0.05, overall_prediction.shape), dtype=torch.float32)
-    adjusted_overall_prediction = torch.clamp(previous_overall_prediction + overall_prediction + random_increment, 0.05, 0.90)  # 限制在5%到70%
+    adjusted_overall_prediction = torch.clamp(previous_overall_prediction + overall_prediction + random_increment, 0.05, 0.90)  # 限制在5%到90%
 
     # 添加微小扰动确保概率不同
     small_perturbation = torch.tensor(np.random.uniform(0.001, 0.005, adjusted_overall_prediction.shape), dtype=torch.float32)
@@ -155,25 +158,36 @@ for i in range(num_time_windows):
 
     # 计算整体异常得分
     overall_anomalies = torch.mean(anomaly_scores[i], dim=0)  # 获取该时间窗口的平均异常得分
+
+    # 获取异常得分最高的前三个特征作为故障发生根因
     top_anomalies_indices = overall_anomalies.topk(3).indices.tolist()  # 获取最高的三个异常维度索引
-    top_anomaly_features = [device_data_df.columns[1:][j] for j in top_anomalies_indices]  # 获取维度名称
+    top_anomaly_features = [device_data_df.columns[2:][j] for j in top_anomalies_indices]  # 获取维度名称
     top_anomaly_str = ', '.join(top_anomaly_features)
     overall_causes.append(top_anomaly_str)  # 存储每个时间窗口的主要故障原因
 
-# 保存整体故障预测为 Excel 文件，按时间窗口分别保存
-overall_prediction_rows = []
-for i, time_window in enumerate(time_window_descriptions):
-    # 按概率排序
-        overall_predictions_sorted, sorted_indices = torch.sort(overall_predictions[i], descending=True)  # 按概率排序
-        sorted_fault_types = [fault_types[j] for j in sorted_indices.tolist()]  # 获取排序后的故障类型
-        # 将预测结果按时间窗口分别列出，并添加“故障发生原因”列
-        overall_prediction_rows += [
-            [time_window, f"{sorted_fault_types[k]}概率", f"{overall_predictions_sorted[k] * 100:.3f}%", overall_causes[i]]
-            for k in range(len(sorted_fault_types))
-        ]
+    # 将异常得分转换为字典，用于添加为 DataFrame 列
+    feature_names = device_data_df.columns[2:]  # 从第2列开始，跳过时间戳等非特征列
+    anomaly_score_dict = {f"{name}异常得分": [overall_anomalies[j].item()] for j, name in enumerate(feature_names)}
+    overall_anomalies_df = pd.DataFrame(anomaly_score_dict)
 
-# 创建整体预测 DataFrame，按时间窗口分别列出，并添加“故障发生原因”列
-overall_predictions_df = pd.DataFrame(overall_prediction_rows, columns=['未来时间窗口', '故障类型', '预测概率', '故障发生原因'])
+    # 按故障概率排序，并生成故障类型列表
+    overall_predictions_sorted, sorted_indices = torch.sort(adjusted_overall_prediction, descending=True)
+    sorted_fault_types = [fault_types[j] for j in sorted_indices.tolist()]  # 获取排序后的故障类型
+
+    # 创建完整的行数据，包括时间窗口、故障类型、预测概率和异常得分
+    for k in range(len(sorted_fault_types)):
+        row = [time_window_descriptions[i], f"{sorted_fault_types[k]}概率", f"{overall_predictions_sorted[k] * 100:.3f}%", overall_causes[i]]
+
+        # 添加各特征的异常得分
+        row.extend(overall_anomalies_df.values.flatten().tolist())
+        overall_prediction_rows.append(row)
+
+# 创建整体预测 DataFrame，按时间窗口分别列出，并添加“故障发生根因”列
+anomaly_score_column_names = [f"{name}异常得分" for name in feature_names]
+overall_predictions_df = pd.DataFrame(
+    overall_prediction_rows,
+    columns=['未来时间窗口', '故障类型', '预测概率', '故障发生根因'] + anomaly_score_column_names
+)
 
 # 保存整体预测结果为 Excel 文件并调整列宽
 with pd.ExcelWriter(overall_prediction_file, engine='openpyxl') as writer:
@@ -186,4 +200,7 @@ with pd.ExcelWriter(overall_prediction_file, engine='openpyxl') as writer:
         worksheet.column_dimensions[column_cells[0].column_letter].width = max_length + 2
 
 print(f'整体预测结果已保存到 {overall_prediction_file}')
+
+
+
 
